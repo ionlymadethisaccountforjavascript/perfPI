@@ -108,6 +108,11 @@ int main(void)
 
     printf("Received %lld bytes.\n", total_received);
     printf("Saved PCAP as received.pcap\n");
+    int status = system("process.exe");
 
+    if (status != 0) {
+      fprintf(stderr, "Error: process.exe failed.\n");
+      return 1;
+  }
     return 0;
 }
