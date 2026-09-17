@@ -1,4 +1,4 @@
-# ProcNet
+# PerfPI
 
 Detecting unexpected background network transmissions from a Windows process.
 
