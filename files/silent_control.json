@@ -1,0 +1,17 @@
+{
+  "profile_name": "silent_control",
+  "dst_host": "127.0.0.1",
+  "dst_port": 5055,
+  "protocol": "tcp",
+  "beacon_enabled": false,
+  "schedule": "periodic",
+  "interval_s": 30,
+  "jitter_pct": 10,
+  "payload_bytes": 512,
+  "presend_ms": 0,
+  "load_enabled": true,
+  "cpu_percent": 8,
+  "cpu_threads": 1,
+  "mem_mb": 128,
+  "disk_kbs": 16
+}

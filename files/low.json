@@ -1,0 +1,18 @@
+{
+  "profile_name": "low",
+  "dst_host": "127.0.0.1",
+  "dst_port": 5055,
+  "protocol": "tcp",
+  "beacon_enabled": true,
+  "schedule": "periodic",
+  "interval_s": 120,
+  "jitter_pct": 5,
+  "payload_bytes": 256,
+  "payload_jitter_pct": 10,
+  "presend_ms": 5,
+  "load_enabled": true,
+  "cpu_percent": 1,
+  "cpu_threads": 1,
+  "mem_mb": 32,
+  "disk_kbs": 0
+}

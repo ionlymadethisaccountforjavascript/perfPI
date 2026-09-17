@@ -1,0 +1,18 @@
+{
+  "profile_name": "high",
+  "dst_host": "127.0.0.1",
+  "dst_port": 5055,
+  "protocol": "tcp-persistent",
+  "beacon_enabled": true,
+  "schedule": "poisson",
+  "interval_s": 10,
+  "jitter_pct": 30,
+  "payload_bytes": 8192,
+  "payload_jitter_pct": 30,
+  "presend_ms": 120,
+  "load_enabled": true,
+  "cpu_percent": 45,
+  "cpu_threads": 2,
+  "mem_mb": 512,
+  "disk_kbs": 128
+}

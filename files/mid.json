@@ -1,0 +1,18 @@
+{
+  "profile_name": "mid",
+  "dst_host": "127.0.0.1",
+  "dst_port": 5055,
+  "protocol": "tcp",
+  "beacon_enabled": true,
+  "schedule": "periodic",
+  "interval_s": 30,
+  "jitter_pct": 15,
+  "payload_bytes": 1024,
+  "payload_jitter_pct": 20,
+  "presend_ms": 25,
+  "load_enabled": true,
+  "cpu_percent": 8,
+  "cpu_threads": 1,
+  "mem_mb": 128,
+  "disk_kbs": 16
+}

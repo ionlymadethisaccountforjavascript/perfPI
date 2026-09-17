@@ -1,0 +1,18 @@
+{
+  "profile_name": "stealth",
+  "dst_host": "127.0.0.1",
+  "dst_port": 5055,
+  "protocol": "udp",
+  "beacon_enabled": true,
+  "schedule": "poisson",
+  "interval_s": 600,
+  "jitter_pct": 50,
+  "payload_bytes": 128,
+  "payload_jitter_pct": 40,
+  "presend_ms": 2,
+  "load_enabled": true,
+  "cpu_percent": 1,
+  "cpu_threads": 1,
+  "mem_mb": 64,
+  "disk_kbs": 0
+}
