@@ -71,8 +71,8 @@ Vary workload (CPU / memory / disk / idle) and transmission pattern (periodic / 
 
 ### Hardware
 
-- Raspberry Pi 4 (Pi 3 works but drops more packets)
-- Windows 10/11 box running the target application
+- Raspberry Pi 5
+- Windows 11 (22H2)
 - A network path that lets the Pi see the Windows traffic. Managed switch with port mirroring, or a network tap.
 
 ### Pi software
@@ -83,11 +83,10 @@ Vary workload (CPU / memory / disk / idle) and transmission pattern (periodic / 
 
 ### Windows software
 
-- Wireshark / TShark
+- Wireshark (TShark)
 - Windows Performance Toolkit (WPR, WPAExporter, xperf)
 - Sysmon or `pktmon`
-- Python 3.8+
-- MSVC or MinGW + CMake
+- MSVC / MinGW + CMake
 - `logman` / `typeperf`
 
 ## Quick start
@@ -307,54 +306,18 @@ Run:
 ```
 
 ## Modeling
-
-Python scripts in `modeling/`. scikit-learn, pandas, numpy, matplotlib, Keras for the autoencoder.
-
-1. Load `features.csv`.
-2. Split by trial ID into train/val/test.
-3. Train baselines:
-   - Threshold rules on packet rate, byte rate, unique destinations
-   - Isolation Forest, One-Class SVM, autoencoder
-   - Supervised: logistic regression, random forest, gradient boosting
-4. Evaluate: PR-AUC, ROC-AUC, precision/recall at fixed FPR (e.g. 1%), detection latency.
-5. Ablations: network only, HPC only, fused; window sizes; attribution confidence filtering.
-
-Results go to `results/`.
+ABSOLUTELY NO FUCKING PYTHON AND NO BUMASS AI MODEL (RANDOM FOREST)
 
 ## Repo layout
 
 ```
-procnet/
-├── config/               # Sysmon XML, PerfMon counter sets, trial templates
-├── scripts/              # capture.sh, run_trial.ps1, export_sysmon.ps1
-├── src/
-│   └── build_features.c
-├── modeling/             # train.py, evaluate.py, notebooks
-├── data/                 # raw and processed (gitignored, checksums kept)
-├── results/
-├── CMakeLists.txt
-├── requirements.txt
-└── environment.yml
+Not yet, You'll have to see !!!!
 ```
-
-## Reproducibility
-
-- All configs in `config/`.
-- Seeds fixed in modeling scripts.
-- Tool and library versions recorded in `environment.yml` and `requirements.txt`.
-- Hashes of raw data files stored in `data/checksums.txt`.
-- Full trial loop scripted: `run_trial.ps1` on Windows, `capture.sh` on the Pi.
 
 ## Known issues
 
 - Clock sync: if Pi and Windows clocks drift, attribution fails. Use NTP on both.
-- Packet drops: `dumpcap` can drop under load. Monitor the drop counter.
-- TShark performance: converting large PCAPs to CSV is slow. Use `-T fields`, only the fields you need.
-- `hpc.etl` size: WPR files get huge. Limit duration, use `-filemode`.
-- Attribution false positives: Sysmon Event ID 3 doesn't capture every packet.
-- H1 injection realism: if you just run `curl` in a loop, the model learns that pattern and fails on real background transmissions.
-- Data leakage: don't window across trial boundaries. Don't normalize before splitting.
-- `build_features.c`: it's C. It will segfault. Use a debugger.
+- Sometimes Powershell scripts tweak, its not a big issue just run it again trust (happens like once every hundred runs)
 
 ## Status
 
