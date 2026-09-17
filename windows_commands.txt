@@ -1,0 +1,198 @@
+$ErrorActionPreference = "Stop"
+
+$TargetPid = {{PID}}
+$DurationSeconds = {{DURATION}}
+
+$CounterOutput = "windows_perf.csv"
+$PmuOutput = "hpc.etl"
+$TraceName = "perfPI"
+
+Write-Host ""
+Write-Host "========================================"
+Write-Host " perfPI Windows telemetry collection"
+Write-Host "========================================"
+Write-Host "PID: $TargetPid"
+Write-Host "Duration: $DurationSeconds seconds"
+Write-Host ""
+
+# ------------------------------------------------------------
+# Find Tracelog
+# ------------------------------------------------------------
+
+$tracelog = Get-Command tracelog.exe -ErrorAction SilentlyContinue
+
+if ($null -eq $tracelog) {
+
+    $tracelogPath = Get-ChildItem `
+        "C:\Program Files (x86)\Windows Kits" `
+        -Filter "tracelog.exe" `
+        -Recurse `
+        -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -match "\\x64\\tracelog\.exe$" } |
+        Select-Object -First 1 -ExpandProperty FullName
+
+    if ($null -eq $tracelogPath) {
+        throw "tracelog.exe was not found. Install the Windows SDK/WDK component that provides Tracelog."
+    }
+
+    $tracelog = $tracelogPath
+}
+else {
+    $tracelog = $tracelog.Source
+}
+
+Write-Host "Tracelog: $tracelog"
+
+# ------------------------------------------------------------
+# Verify target process
+# ------------------------------------------------------------
+
+$process = Get-Process -Id $TargetPid -ErrorAction SilentlyContinue
+
+if ($null -eq $process) {
+    throw "Process with PID $TargetPid was not found."
+}
+
+Write-Host "Process: $($process.ProcessName)"
+Write-Host ""
+
+# ------------------------------------------------------------
+# Windows Performance Counter output
+# ------------------------------------------------------------
+
+"timestamp,pid,cpu_percent,io_bytes_sec,io_ops_sec,page_faults_sec,thread_count,context_switches_sec" |
+    Set-Content -Path $CounterOutput
+
+# ------------------------------------------------------------
+# Windows Performance Counter definitions
+# ------------------------------------------------------------
+
+$counterPaths = @(
+    "\Process($($process.ProcessName))\% Processor Time",
+    "\Process($($process.ProcessName))\IO Data Bytes/sec",
+    "\Process($($process.ProcessName))\IO Data Operations/sec",
+    "\Process($($process.ProcessName))\Page Faults/sec",
+    "\Process($($process.ProcessName))\Thread Count",
+    "\System\Context Switches/sec"
+)
+
+# ------------------------------------------------------------
+# Start hardware PMU trace
+#
+# Hardware counters:
+#   InstructionRetired
+#   TotalCycles
+#   LLCMisses
+#
+# Kernel events:
+#   CSWITCH
+#   PROC_THREAD
+#   LOADER
+# ------------------------------------------------------------
+
+Write-Host "Starting hardware PMU recording..."
+
+& $tracelog `
+    -start $TraceName `
+    -f $PmuOutput `
+    -eflag "CSWITCH+PROC_THREAD+LOADER" `
+    -Pmc "InstructionRetired,TotalCycles,LLCMisses:CSWITCH"
+
+if ($LASTEXITCODE -ne 0) {
+    throw "Tracelog failed to start hardware PMU recording."
+}
+
+Write-Host "Hardware PMU recording started."
+Write-Host ""
+
+# ------------------------------------------------------------
+# Collect Windows Performance Counters
+# ------------------------------------------------------------
+
+try {
+
+    $endTime = (Get-Date).AddSeconds($DurationSeconds)
+    $sampleNumber = 0
+
+    Write-Host "Collecting Windows Performance Counters..."
+
+    while ((Get-Date) -lt $endTime) {
+
+        # ----------------------------------------------------
+        # Get target process performance data directly by PID
+        # ----------------------------------------------------
+
+        $procData = Get-CimInstance `
+            -ClassName Win32_PerfFormattedData_PerfProc_Process `
+            -Filter "IDProcess = $TargetPid"
+
+        if ($null -eq $procData) {
+            throw "Performance data for PID $TargetPid could not be read."
+        }
+
+        # ----------------------------------------------------
+        # System-wide context switches
+        # ----------------------------------------------------
+
+        $systemData = Get-CimInstance `
+            -ClassName Win32_PerfFormattedData_PerfOS_System
+
+        if ($null -eq $systemData) {
+            throw "System performance data could not be read."
+        }
+
+        # ----------------------------------------------------
+        # Timestamp
+        # ----------------------------------------------------
+
+        $timestamp =
+            ([DateTimeOffset]::UtcNow).ToUnixTimeMilliseconds() / 1000.0
+
+        # ----------------------------------------------------
+        # Read Windows Performance Counter values
+        # ----------------------------------------------------
+
+        $cpu = $procData.PercentProcessorTime
+        $ioBytes = $procData.IODataBytesPerSec
+        $ioOps = $procData.IODataOperationsPerSec
+        $pageFaults = $procData.PageFaultsPerSec
+        $threads = $procData.ThreadCount
+        $contextSwitches = $systemData.ContextSwitchesPerSec
+
+        # ----------------------------------------------------
+        # Write sample
+        # ----------------------------------------------------
+
+        "$timestamp,$TargetPid,$cpu,$ioBytes,$ioOps,$pageFaults,$threads,$contextSwitches" |
+            Add-Content -Path $CounterOutput
+
+        $sampleNumber++
+
+        Write-Host "Sample $sampleNumber"
+
+        Start-Sleep -Milliseconds 900
+    }
+
+}
+finally {
+
+    # --------------------------------------------------------
+    # Stop PMU trace
+    # --------------------------------------------------------
+
+    Write-Host ""
+    Write-Host "Stopping hardware PMU recording..."
+
+    & $tracelog -stop $TraceName
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Tracelog did not stop cleanly."
+    }
+}
+
+Write-Host ""
+Write-Host "========================================"
+Write-Host " Collection complete"
+Write-Host "========================================"
+Write-Host "Created: $CounterOutput"
+Write-Host "Created: $PmuOutput"
