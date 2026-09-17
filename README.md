@@ -1,4 +1,4 @@
-# ProcNet
+# PerfPI
 
 **Detecting unexpected background network transmissions from a Windows process.**
 
@@ -129,7 +129,7 @@ random), keep everything else consistent.
 
 ### Pi software
 
-- Raspbian (or any Linux)
+- Raspbian, but you can use whatever home lab/server setup you have
 - `dumpcap` or `tcpdump`
 - `chrony` — **do not skip this.** Clock drift kills attribution.
 
@@ -138,8 +138,8 @@ random), keep everything else consistent.
 - [Wireshark / TShark](https://www.wireshark.org/download.html)
 - [Windows Performance Toolkit](https://docs.microsoft.com/en-us/windows-hardware/test/wpt/) (WPR, WPAExporter, xperf)
 - [Sysmon](https://docs.microsoft.com/en-us/sysinternals/downloads/sysmon) (or use `pktmon`)
-- Python 3.8+
-- MSVC or MinGW + CMake (to build `build_features.c`)
+- NO Python 3.8+, as a matter of fact do not even have python on the same laptop its a disgrace
+- OFC HAVE C TOOLS READY (MSYS2, GIT BASH, MINGW64, CMAKE, ETC). IF you dont have it ur a noob (jkjkjkjk)
 - `logman` / `typeperf` (built in)
 
 ---
@@ -203,7 +203,7 @@ mkdir -p "$OUTDIR"
 
 case "${1:-}" in
   start)
-    sudo dumpcap -i "$INTERFACE" \
+    sudo tcpdump -i "$INTERFACE" \
       -w "$OUTDIR/capture_$(date +%Y%m%d_%H%M%S).pcap" \
       -b filesize:100000 -b files:10 \
       -q &
@@ -218,10 +218,7 @@ case "${1:-}" in
     exit 1
     ;;
 esac
-```
 
-I use `dumpcap` over `tcpdump` because the ring buffer handling is better and it drops
-fewer packets under load.
 
 ### Windows
 
@@ -316,20 +313,6 @@ The matching strategy:
 Attribution confidence for a window is the fraction of packets matched to the target
 process. Low-confidence windows should be flagged, not silently dropped.
 
-**Caveats you will hit:**
-
-- Sysmon does not log every connection. UDP is often missed entirely.
-- Short-lived TCP connections (DNS, for example) may not appear.
-- The Pi and Windows clocks will drift if you don't sync them.
-- Sequence numbers can help disambiguate when timestamps tie.
-
-For `hpc.etl`, process attribution is even harder. WPR's default CPU profile does not
-include PID in every event. You can add `-start ProcessThread` or custom ETW providers,
-or you can correlate HPC data to the trial as a whole and accept that it is not
-process-specific. I usually do the latter for anomaly detection and flag the limitation
-in any write-up.
-
----
 
 ## Dataset generation
 
@@ -436,39 +419,6 @@ procnet/
 ├── requirements.txt
 └── environment.yml
 ```
-
----
-
-## Reproducibility
-
-- All configs in `config/`.
-- Seeds fixed in modeling scripts.
-- Tool and library versions recorded in `environment.yml` and `requirements.txt`.
-- Hashes of raw data files stored in `data/checksums.txt`.
-- The full trial loop is scripted: `run_trial.ps1` on Windows, `capture.sh` on the Pi.
-  Then `build_features`, then the modeling scripts.
-
----
-
-## Known issues
-
-- **Clock sync** — if the Pi and Windows clocks drift, attribution fails. Use NTP on
-  both. Check offsets before each trial.
-- **Packet drops** — `dumpcap` can drop packets under load. Monitor the drop counter.
-  Use a ring buffer and fast disk.
-- **TShark performance** — converting large PCAPs to CSV is slow. Use `-T fields` and
-  only the fields you need. Split the PCAP if needed.
-- **hpc.etl size** — WPR files get huge. Limit duration, use `-filemode`. Exporting to
-  CSV can take a while.
-- **Attribution false positives** — Sysmon Event ID 3 doesn't capture every packet.
-- **H1 injection realism** — if you just run `curl` in a loop, the model learns that
-  pattern and fails on real background transmissions. Make the injected traffic
-  realistic.
-- **Data leakage** — don't window across trial boundaries. Don't use future info. Don't
-  normalize before splitting.
-- **build_features.c** — it's C. It will segfault. Use a debugger.
-
----
 
 ## Status
 
