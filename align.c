@@ -4,10 +4,11 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
+#include <time.h>
+#include <unistd.h>
 
 #define HPC_FILE          "hpc.csv"
 #define PACKET_FILE       "packet_data.csv"
-#define OUTPUT_FILE       "synced.csv"
 #define DEFAULT_MAX_DELTA 1.0   /* max allowed |hpc_ts - pkt_ts| in seconds */
 
 typedef struct {
@@ -20,6 +21,24 @@ static void strip_eol(char *s)
     size_t n = strlen(s);
     while (n > 0 && (s[n - 1] == '\n' || s[n - 1] == '\r')) {
         s[--n] = '\0';
+    }
+}
+
+/* Build a unique timestamped filename: synced_YYYYMMDD_HHMMSS.csv */
+static void make_output_filename(char *buf, size_t buf_sz)
+{
+    time_t now = time(NULL);
+    struct tm tm_now;
+    localtime_r(&now, &tm_now);
+
+    char stamp[32];
+    strftime(stamp, sizeof(stamp), "%Y%m%d_%H%M%S", &tm_now);
+    snprintf(buf, buf_sz, "synced_%s.csv", stamp);
+
+    /* Guarantee uniqueness even if run multiple times in the same second */
+    int suffix = 1;
+    while (access(buf, F_OK) == 0 && suffix < 1000) {
+        snprintf(buf, buf_sz, "synced_%s_%d.csv", stamp, suffix++);
     }
 }
 
@@ -183,9 +202,12 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    FILE *out = fopen(OUTPUT_FILE, "w");
+    char out_file[128];
+    make_output_filename(out_file, sizeof(out_file));
+
+    FILE *out = fopen(out_file, "w");
     if (out == NULL) {
-        perror(OUTPUT_FILE);
+        perror(out_file);
         free_csv(hpc_header, hpc, n_hpc);
         free_csv(pkt_header, pkts, n_pkts);
         return 1;
@@ -207,7 +229,7 @@ int main(int argc, char *argv[])
     fclose(out);
 
     printf("Loaded %zu HPC rows and %zu packet rows.\n", n_hpc, n_pkts);
-    printf("Matched %zu rows (within %.3f s) -> %s\n", matched, max_delta, OUTPUT_FILE);
+    printf("Matched %zu rows (within %.3f s) -> %s\n", matched, max_delta, out_file);
 
     if (matched == 0) {
         fprintf(stderr,
