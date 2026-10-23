@@ -4,14 +4,8 @@
 
 #define PCAP_FILE   "received.pcap"
 #define OUTPUT_FILE "packet_data.csv"
-
-/*
- * Windows short path for:
- * C:\Program Files\Wireshark\tshark.exe
- *
- * This avoids the space in "Program Files".
- */
-#define TSHARK "C:\\Progra~1\\Wireshark\\tshark.exe"
+#define TEMP_FILE   "packet_data.csv.tmp"
+#define TSHARK      "tshark"
 
 int main(void)
 {
@@ -30,13 +24,18 @@ int main(void)
     printf("Processing PCAP with TShark...\n");
 
     /*
-     * Extract packet-level information.
-     *
-     * We deliberately do not use a display filter here.
-     * TShark will process the entire PCAP and leave irrelevant
-     * fields blank when they do not apply to a packet.
+     * Wireshark 4.x uses lowercase "_ws.col.protocol", while older
+     * Wireshark 3.x uses "_ws.col.Protocol". Probe once so both work.
      */
-    const char *command =
+    const char *proto_field = "_ws.col.protocol";
+    if (system(TSHARK " -r " PCAP_FILE " -c 1 -T fields -e _ws.col.protocol >/dev/null 2>&1") != 0) {
+        proto_field = "_ws.col.Protocol";
+    }
+
+    char command[1024];
+    int written = snprintf(
+        command,
+        sizeof(command),
         TSHARK " "
         "-r " PCAP_FILE " "
         "-T fields "
@@ -50,7 +49,7 @@ int main(void)
         "-e ip.dst "
         "-e ipv6.src "
         "-e ipv6.dst "
-        "-e _ws.col.Protocol "
+        "-e %s "
         "-e tcp.srcport "
         "-e tcp.dstport "
         "-e udp.srcport "
@@ -59,12 +58,26 @@ int main(void)
         "-e tcp.flags.syn "
         "-e tcp.flags.fin "
         "-e tcp.flags.push "
-        "> " OUTPUT_FILE;
+        "> " TEMP_FILE,
+        proto_field
+    );
+
+    if (written < 0 || (size_t)written >= sizeof(command)) {
+        fprintf(stderr, "Error: command buffer overflow.\n");
+        return 1;
+    }
 
     int status = system(command);
 
     if (status != 0) {
-        fprintf(stderr, "Error: TShark failed.\n");
+        remove(TEMP_FILE);
+        fprintf(stderr, "Error: TShark failed (ensure 'tshark' is installed).\n");
+        return 1;
+    }
+
+    if (rename(TEMP_FILE, OUTPUT_FILE) != 0) {
+        perror("rename");
+        remove(TEMP_FILE);
         return 1;
     }
 
