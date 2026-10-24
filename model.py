@@ -1,3 +1,10 @@
+from pathlib import Path
+import hashlib
+import json
+
+import numpy as np
+import pandas as pd
+#cleanup function 
 def main():
     # Directory containing this script.
     root = Path(__file__).resolve().parent
