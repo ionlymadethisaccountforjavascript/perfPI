@@ -457,7 +457,7 @@ def evaluate_all(h0_trials: list, h1_trials: list):
         f"({int(np.sum(hc_preds == y_arr))}/{len(y_arr)}) | "
         f"Trial ROC-AUC = {_roc_auc(y_arr, hc_margins):.4f}"
     )
-
+##hehehehehhehehehe
 
 def main():
     root = Path(__file__).resolve().parent
