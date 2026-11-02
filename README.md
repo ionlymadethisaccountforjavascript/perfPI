@@ -306,7 +306,7 @@ Run:
 ```
 
 ## Modeling
-ABSOLUTELY NO FUCKING PYTHON AND NO BUMASS AI MODEL (RANDOM FOREST)
+
 
 ## Repo layout
 
